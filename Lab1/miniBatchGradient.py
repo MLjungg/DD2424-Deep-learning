@@ -201,7 +201,6 @@ def ComputeGrads(X, Y, W, b, lamda, batch_size):
     G = - (Y - P)
     dl_dw = (1 / batch_size) * np.dot(G, np.transpose(X))
     grad_b = (1 / batch_size) * np.sum(G, 1)
-
     grad_W = dl_dw + 2 * lamda * W
 
     return [grad_W, grad_b.reshape(-1, 1)]
