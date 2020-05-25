@@ -125,7 +125,7 @@ def ComputeGradients(X, Y, W, b, lamb):
     G = - (Y - P)
 
     grad_W = ((1/n) * np.dot(G, X.transpose())) + 2 * lamb * W
-    grad_b = (1/n) * np.dot(G, np.ones((n,1)))
+    grad_b = (1/n) * np.dot(G, np.ones((n, 1)))
 
     return grad_W, grad_b
 

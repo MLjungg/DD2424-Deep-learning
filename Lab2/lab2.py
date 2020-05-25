@@ -151,14 +151,14 @@ def ComputeGradsNum(X, Y, W, b, lamda, h):
     for i in range(len(b)):
         b_try = np.array(b)
         b_try[i] += h
-        c2 = ComputeCost(X, Y, W, b_try, lamda)
+        c2, loss = ComputeCost(X, Y, W, b_try, lamda)
         grad_b[i] = (c2 - c) / h
 
     for i in range(W.shape[0]):
         for j in range(W.shape[1]):
             W_try = np.array(W)
             W_try[i, j] += h
-            c2 = ComputeCost(X, Y, W_try, b, lamda)
+            c2, loss = ComputeCost(X, Y, W_try, b, lamda)
             grad_W[i, j] = (c2 - c) / h
     return [grad_W, grad_b]
 
@@ -173,34 +173,35 @@ def ComputeGradsNumSlow(X, Y, W1, W2, b1, b2, lamda, h):
     for i in range(len(b1)):
         b1_try = np.array(b1)
         b1_try[i] -= h
-        c1 = ComputeCost(X, Y, W1, W2, b1_try, b2, lamda)
+        c1, loss = ComputeCost(X, Y, W1, W2, b1_try, b2, lamda)
 
         b1_try = np.array(b1)
         b1_try[i] += h
-        c2 = ComputeCost(X, Y, W1, W2, b1_try, b2, lamda)
+        c2, loss = ComputeCost(X, Y, W1, W2, b1_try, b2, lamda)
 
         grad_b1[i] = (c2 - c1) / (2 * h)
 
     for i in range(len(b2)):
         b2_try = np.array(b2)
         b2_try[i] -= h
-        c1 = ComputeCost(X, Y, W1, W2, b1, b2_try, lamda)
+        c1, loss = ComputeCost(X, Y, W1, W2, b1, b2_try, lamda)
 
         b2_try = np.array(b2)
         b2_try[i] += h
-        c2 = ComputeCost(X, Y, W1, W2, b1, b2_try, lamda)
+        c2, loss = ComputeCost(X, Y, W1, W2, b1, b2_try, lamda)
 
         grad_b2[i] = (c2 - c1) / (2 * h)
 
-    for i in range(W1.shape[0]):
+    #for i in range(W1.shape[0]):
+    for i in range(1):
         for j in range(W1.shape[1]):
             W1_try = np.array(W1)
             W1_try[i, j] -= h
-            c1 = ComputeCost(X, Y, W1_try, W2, b1, b2, lamda)
+            c1, loss = ComputeCost(X, Y, W1_try, W2, b1, b2, lamda)
 
             W1_try = np.array(W1)
             W1_try[i, j] += h
-            c2 = ComputeCost(X, Y, W1_try, W2, b1, b2, lamda)
+            c2, loss = ComputeCost(X, Y, W1_try, W2, b1, b2, lamda)
 
             grad_W1[i, j] = (c2 - c1) / (2 * h)
 
@@ -208,11 +209,11 @@ def ComputeGradsNumSlow(X, Y, W1, W2, b1, b2, lamda, h):
         for j in range(W2.shape[1]):
             W2_try = np.array(W2)
             W2_try[i, j] -= h
-            c1 = ComputeCost(X, Y, W1, W2_try, b1, b2, lamda)
+            c1, loss = ComputeCost(X, Y, W1, W2_try, b1, b2, lamda)
 
             W2_try = np.array(W2)
             W2_try[i, j] += h
-            c2 = ComputeCost(X, Y, W1, W2_try, b1, b2, lamda)
+            c2, loss = ComputeCost(X, Y, W1, W2_try, b1, b2, lamda)
 
             grad_W2[i, j] = (c2 - c1) / (2 * h)
 
@@ -285,7 +286,7 @@ def ComputeGrads(X, Y, W1, W2, b1, b2, lamda, batch_size):
 
     G = - (Y - P)
 
-    dl_dw2 = (1 / batch_size) * np.dot(G, np.transpose(H))
+    dl_dw2 = ((1 / batch_size) * np.dot(G, np.transpose(H)))
     grad_b2 = (1 / batch_size) * np.sum(G, 1)
     grad_W2 = dl_dw2 + 2 * lamda * W2
 
@@ -293,7 +294,7 @@ def ComputeGrads(X, Y, W1, W2, b1, b2, lamda, batch_size):
     G = np.multiply(G, H > 0)
 
     dl_dw1 = (1 / batch_size) * np.dot(G, np.transpose(X))
-    grad_W1 = dl_dw1 + 2 * lamda * W1
+    grad_W1 = dl_dw1 + lamda * W1
     grad_b1 = (1 / batch_size) * np.sum(G, 1)
 
     return [grad_W1, grad_b1.reshape(-1, 1), grad_W2, grad_b2.reshape(-1, 1)]
@@ -342,10 +343,12 @@ def mini_batch_GD(X_train, Y_train, GD_params, W1, W2, b1, b2, lamda, X_valid, Y
     accuracies_train = []
     accuracies_valid = []
     etas = []
+    eta = 0.1
     for i in range(GD_params["n_epochs"]):
         for j in range(len(x_batches)):
-            eta = update_eta(GD_params["eta_min"], GD_params["eta_max"], GD_params["n_s"], get_t(i, j + 1, batch_size))
+            eta = update_eta(GD_params["eta_min"], GD_params["eta_max"], GD_params["n_s"], get_t(i, j + 1, len(x_batches)))
             etas.append(eta)
+            eta=0.001
             grad_W1, grad_b1, grad_W2, grad_b2 = ComputeGrads(x_batches[j], y_batches[j], W1, W2, b1, b2, lamda,
                                                               GD_params["batch_size"])
 
@@ -355,16 +358,16 @@ def mini_batch_GD(X_train, Y_train, GD_params, W1, W2, b1, b2, lamda, X_valid, Y
             b2 -= eta * grad_b2
 
         # Add cost, loss and accuracy every epoch
-        #cost_train, loss_train = ComputeCost(X_train, Y_train, W1, W2, b1, b2, lamda)
-        #cost_valid, loss_valid = ComputeCost(X_valid, Y_valid, W1, W2, b1, b2, lamda)
-        #costs_train.append(cost_train)
-        #costs_valid.append(cost_valid)
-        #losses_train.append(loss_train)
-        #losses_valid.append(loss_valid)
-        #accuracies_train.append(ComputeAccuracy(X_train, Y_train, W1, W2, b1, b2))
-        #accuracies_valid.append(ComputeAccuracy(X_valid, Y_valid, W1, W2, b1, b2))
+        cost_train, loss_train = ComputeCost(X_train, Y_train, W1, W2, b1, b2, lamda)
+        cost_valid, loss_valid = ComputeCost(X_valid, Y_valid, W1, W2, b1, b2, lamda)
+        costs_train.append(cost_train)
+        costs_valid.append(cost_valid)
+        losses_train.append(loss_train)
+        losses_valid.append(loss_valid)
+        accuracies_train.append(ComputeAccuracy(X_train, Y_train, W1, W2, b1, b2))
+        accuracies_valid.append(ComputeAccuracy(X_valid, Y_valid, W1, W2, b1, b2))
 
-        cycles = ((get_t(i + 1, 0, batch_size)) // (GD_params["n_s"] * 2))
+        cycles = ((get_t(i + 1, 0, len(x_batches))) // (GD_params["n_s"] * 2))
         if GD_params["cycles"] == cycles:
             return W1, W2, b1, b2, costs_train, costs_valid, losses_train, losses_valid, accuracies_train, accuracies_valid
 
@@ -372,8 +375,8 @@ def mini_batch_GD(X_train, Y_train, GD_params, W1, W2, b1, b2, lamda, X_valid, Y
 
 
 def compare_gradients(X_train, Y_train, W1, W2, b1, b2, batch_size, lamda):
-    W1_num, b1_num, W2_num, b2_num = ComputeGradsNumSlow(X_train[:, 0:batch_size], Y_train[:, 0:batch_size], W1, W2, b1,
-                                                         b2, lamda, 1e-6)
+    #W1_num, b1_num, W2_num, b2_num = ComputeGradsNumSlow(X_train[:, 0:batch_size], Y_train[:, 0:batch_size], W1, W2, b1,
+                         #                                b2, lamda, 1e-6)
     W1_anal, b1_anal, W2_anal, b2_anal = ComputeGrads(X_train[:, 0:batch_size], Y_train[:, 0:batch_size], W1, W2, b1,
                                                       b2, lamda,
                                                       batch_size)
@@ -439,9 +442,9 @@ def main():
     # Set seed of random generator
     np.random.seed(seed=400)
     # Load data
-    #X_train, Y_train, X_valid, Y_valid, X_test, Y_test = getData("data_batch_1", "data_batch_2", "test_batch")
+    X_train, Y_train, X_valid, Y_valid, X_test, Y_test = getData("data_batch_1", "data_batch_2", "test_batch")
 
-    X_train, X_valid, X_test, Y_train, Y_valid, Y_test = getAllData()
+    #X_train, X_valid, X_test, Y_train, Y_valid, Y_test = getAllData()
 
     # Initialize parameters
     m = 50
@@ -451,35 +454,34 @@ def main():
     W2 = np.random.normal(0.0, 1 / np.sqrt(m), (K, m))
     b1 = np.zeros((m, 1))
     b2 = np.zeros((K, 1))
-    l_min = -3
-    l_max = -2
+    l_min = -5
+    l_max = -1
     l = l_min + (l_max - l_min) * np.random.uniform(0, 1, 8)
-    lamdas = 10**l
+    lamdas = [10 ** l]
     GD_params = {"batch_size": 100, "eta": 0.001, "n_epochs": 100, "eta_min": 1e-5, "eta_max": 0.1, "n_s": 900,
-                 "cycles": 4}
+                 "cycles": 6}
 
-    # compare_gradients(X_train, Y_train, W1, W2, b1, b2, GD_params["batch_size"], lamda)
+    #compare_gradients(X_train, Y_train, W1, W2, b1, b2, GD_params["batch_size"], 0)
 
     # Train minibatchGD
     for lamda in lamdas:
         W1, W2, b1, b2, costs_train, costs_valid, loss_train, loss_valid, acc_train, acc_valid = mini_batch_GD(X_train,
-                                                                                                           Y_train,
-                                                                                                           GD_params,
-                                                                                                           W1, W2, b1,
-                                                                                                           b2, lamda,
-                                                                                                           X_valid,
-                                                                                                           Y_valid)
-        acc = ComputeAccuracy(X_valid, Y_valid, W1, W2, b1, b2)
-        f = open("fineTune.txt", "a")
-        f.write("Lamda=" + str(lamda) + " Accuracy=" + str(acc) + "\n")
-        f.close()
+                                                                                                               Y_train,
+                                                                                                               GD_params,
+                                                                                                               W1, W2,
+                                                                                                               b1,
+                                                                                                               b2,
+                                                                                                               lamda,
+                                                                                                               X_valid,
+                                                                                                               Y_valid)
+#       acc = ComputeAccuracy(X_test, Y_test, W1, W2, b1, b2)
+ #      f = open("final.txt", "a")
+  #     f.write("Lamda=" + str(lamda) + " Accuracy=" + str(acc) + "\n")
+   #    f.close()
+
 
     # Plot
-    #plot_costs(costs_train, costs_valid, GD_params["batch_size"])
-    #plot_loss(loss_train, loss_valid, GD_params["batch_size"])
-    #plot_acc(acc_train, acc_valid, GD_params["batch_size"])
-    #acc = ComputeAccuracy(X_test, Y_test, W1, W2, b1, b2)
-    #print(acc)
-
-
+    # plot_costs(costs_train, costs_valid, GD_params["batch_size"])
+    # plot_loss(loss_train, loss_valid, GD_params["batch_size"])
+    # plot_acc(acc_train, acc_valid, GD_params["batch_size"])
 main()
